@@ -52,6 +52,7 @@ class Quasi_classic:
             self.w_quad.append( w )
             self.l_sizes.append( max_l - m + 1 )
 
+
             
         self.l_arr = []
         self.m_arr = []
@@ -100,9 +101,6 @@ class Quasi_classic:
 
     def get_force(self, r, th):
         return self.Force( r, th )
-    
-    def print_values(self):
-        pass
 
     def get_derivative(self, t, Y):
 
@@ -164,6 +162,17 @@ class Quasi_classic:
         self.Psi = sol.y.T[:,2:]
 
         self.alignment = np.zeros_like( self.t )
+        
+        self.Psi_ang = np.zeros_like( self.Psi )
+        self.th_all = []
+        self.w_all = []
+
+        for m in self.m_vals:
+            self.th_all += list(self.th_quad[abs(m)] + m * np.pi)
+            self.w_all += list(self.w_quad[abs(m)])
+
+        self.th_all = np.array( self.th_all )
+        self.w_all = np.array( self.w_all )
 
         for i, t in enumerate(self.t):
             
@@ -183,6 +192,10 @@ class Quasi_classic:
 
                 self.alignment[i] += np.sum( np.abs( Pleg_dag @ Psi )**2 * np.cos( th )**2 )
 
+                self.Psi_ang[i, ind_0:ind_0+l_size] = Pleg_dag @ Psi
+
                 ind_0 += l_size
+
+        self.Psi_ang /= np.sqrt( self.w_all )
 
         pass

@@ -72,8 +72,22 @@ class Quasi_classic:
         pass
     
 
-    def set_potential(self, PES):
+    def set_potential(self, PES, eps = 1e-3):
         self.PES = PES
+        
+        def PES_derivative( r, th ):
+            #
+            # numerical approximation of force based on 
+            # five point stencil for one dimension
+            #
+
+            h = r * eps
+            F_r = - ( self.PES(r - 2*h, th) - 8 * self.PES(r - h, th) + 8*self.PES(r + h, th) - self.PES(r + 2*h, th)) / ( 12 * h )
+
+            return F_r
+        
+        self.Force = PES_derivative
+
         pass
 
     def get_potential(self, r, th):
@@ -104,9 +118,9 @@ class Quasi_classic:
         for m in self.m_vals:
 
             l_size = self.l_sizes[ abs(m) ]
-            l = self.l_arr[ind_0:ind_0 + l_size]
+            l = np.reshape( self.l_arr[ind_0:ind_0 + l_size], (-1,1) )
 
-            Pleg = np.transpose( np.exp( 1j * self.Be_rot * ( l + 1 ) * l * t ) * np.transpose( self.Pleg_arr[ abs(m) ] ) )
+            Pleg = np.exp( 1j * self.Be_rot * ( l + 1 ) * l * t ) * self.Pleg_arr[ abs(m) ]
             Pleg_dag = np.conj(np.transpose(Pleg))
 
             th = self.th_quad[ abs(m) ]
@@ -120,23 +134,26 @@ class Quasi_classic:
 
             der_Y[1] += np.sum( F_r * np.abs( Pleg_dag @ Psi )**2 )
 
-            Pot = Pleg @ np.diag( self.get_potential( r, th ) ) @ Pleg_dag
+            Pot = ( Pleg * self.get_potential( r, th ) ) @ Pleg_dag
 
             der_Y[2+ind_0:2+ind_0+l_size] = - 1j * Pot @ Psi
 
             ind_0 += l_size
 
+        Centrifugal_force = ( self.l_arr + 1. ) * self.l_arr / self.m_eff / r**3
+        der_Y[1] += np.sum( np.abs( Y[2:] )**2 * Centrifugal_force )
+        
+        Centrifugal_barrier = ( self.l_arr + 1. ) * self.l_arr / 2 / self.m_eff / r**2
+        der_Y[2:] += - 1j * Centrifugal_barrier * Y[2:]
+
         return der_Y
     
-    def solve(self, t_max, absolute_tol=1e-7, relative_tol=1e-5, max_step = np.inf, t_arr = None):
+    def solve(self, t_max, kwargs = {}):
         
         sol = solve_ivp( self.get_derivative, 
                         t_span = [0, t_max], 
-                        t_eval = t_arr, 
                         y0 = self.get_initial_vector(), 
-                        atol=absolute_tol, 
-                        rtol=relative_tol, 
-                        max_step = max_step
+                        **kwargs
                         )
         
         self.t = sol.t
@@ -155,9 +172,9 @@ class Quasi_classic:
             for m in self.m_vals:
 
                 l_size = self.l_sizes[ abs(m) ]
-                l = self.l_arr[ind_0:ind_0 + l_size]
+                l = np.reshape( self.l_arr[ind_0:ind_0 + l_size], (-1,1) )
 
-                Pleg = np.diag( np.exp( 1j * self.Be_rot * ( l + 1 ) * l * t ) ) @ self.Pleg_arr[ abs(m) ]
+                Pleg = np.exp( 1j * self.Be_rot * ( l + 1 ) * l * t ) * self.Pleg_arr[ abs(m) ]
                 Pleg_dag = np.conj(np.transpose(Pleg))
 
                 th = self.th_quad[ abs(m) ]

@@ -15,7 +15,7 @@ def get_Pleg_matrix( N, m ):
 
     for i, x in enumerate(x_arr):
 
-        lpmn_at_x, _ = lpmn( m, l_max, x )
+        lpmn_at_x, _ = lpmn( m, l_max, -x )
 
         P_lm[i,:] = lpmn_at_x[ abs(m), abs(m): ] * norm * np.sqrt( w[i] )
 
@@ -36,6 +36,6 @@ def get_laplacian_matrix( N, m ):
 
     l_arr = np.arange( 0, N ) + abs(m)
 
-    L2 = np.matmul( np.matmul( np.transpose(U), np.diag( l_arr * ( l_arr + 1 ) ) ), U )
+    L2 = U.T @ np.diag( l_arr * ( l_arr + 1 ) ) @ U
 
     return L2
